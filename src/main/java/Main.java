@@ -53,6 +53,10 @@ public class Main  {
 
         int readIssues = 0;
         int writeIssues = 0;
+        int totalCount = 0;
+        int initialCount = 0;
+        int diffCount = 0;
+        int processCount = 0;
 
         try {
             connection = DriverManager.getConnection("jdbc:sqlite:example.db");
@@ -61,16 +65,20 @@ public class Main  {
 
             statement.executeUpdate("create table if not exists error (process_id string, error_id string, stacktrace string, error_date datetime)");
 
-            int totalCount = 0;
             for (int i=1; i<=TOTAL_ITERATIONS; i++) {
                 try {
                     totalCount = getTotalCount(statement);
+                    if (initialCount == 0) {
+                        initialCount = totalCount;
+                    }
+                    diffCount = totalCount - initialCount;
                 }
                 catch (SQLException e) {
                     readIssues++;
                     System.err.println(e.getMessage());
                 }
-                log(String.format("iteration=%03d, total=%d, readIssues=%d, writeIssues=%d", i, totalCount, readIssues, writeIssues));
+                long tNow = System.currentTimeMillis();
+                log(String.format("### iteration=%03d, elapsed=%d, totalCount=%d, processCount=%d, diffCount=%d, readIssues=%d, writeIssues=%d", i, (tNow - t1), totalCount, processCount, diffCount, readIssues, writeIssues));
 
                 for (int j=0; j<CONSECUTIVE_INSERTS; j++) {
                     String uuid = java.util.UUID.randomUUID().toString();
@@ -80,11 +88,12 @@ public class Main  {
                         writeIssues++;
                         System.err.println(e.getMessage());
                     }
+                    processCount++;
                 }
                 int sleepMillis = getRandomInt(SLEEP_LOWER_BOUND, SLEEP_UPPER_BOUND);
-                log(String.format("### sleep=%d", sleepMillis));
+                log(String.format("# sleep=%d", sleepMillis));
                 Thread.sleep(sleepMillis);
-                log("#### done sleeping");
+                log("# done sleeping");
 
                 if (i % SELECT_EVERY_ITERATION == 1) {
                     try {
